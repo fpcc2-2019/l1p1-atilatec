@@ -1,5 +1,6 @@
 ---
-title: "Temperatura JP x CG"
+title: "Índices Pluviométricos e de temperatura: JP x CG"
+author: "Átila de Souza Medeiros"
 output:
     html_document:
     df_print: paged
@@ -11,38 +12,119 @@ library(tidyverse)
 library(here)
 library(lubridate)
 library(ggbeeswarm)
+library(ggplot2)
+library(gridExtra)
 theme_set(theme_bw())
 ```
+Toda a análise abaixo será realizada levando-se em consideração os índices pluviométrico (mm) e de temperatura (ºC) dos últimos 10 anos.
+
+Filtrando os dados de 2008 a 2018.
 
 ```{r read}
 climas = read_csv(here::here("data/clima_cg_jp-semanal.csv"), 
                   col_types = "cTdddddd")
+clima08_18 = climas %>%    
+    filter(ano >=2008) 
+head(clima08_18, n=10)
 
-glimpse(climas)
 ```
+###Amostra
+A tabela acima demonstra a formatação geral dos dados. São 1060 registros, onde, 527 refere-se a cidade de Campina Grande e 533 a cidade de João Pessoa e, 8 variáveis (cidade, semana (data do registro), tmedia (temperatura média), tmax (temperatura máxima), tmin (temperatura minima), chuva (índice pluviométrico), mes, ano)).
 
-## Temperatura
+## Análise sobre a Temperatura JP X CG
 
 ### Onde é mais quente?
+O Histograma abaixo mostra a distribuição das temperaturas médias no período de 2009 e 2019.
 
+```{r}
+# histograma
+cg = clima08_18 %>% 
+    filter(cidade == "Campina Grande")
 
-### As temperaturas máximas semanais (o pico do calor) são tão diferentes quanto as médias? Mais?  
+hist_tempcg = cg %>% 
+    ggplot(aes(x = tmedia)) +
+    scale_x_continuous(breaks = seq(15,35,1)) +
+    scale_y_continuous(breaks = seq(0,100,5)) +
+    geom_histogram(binwidth = .5, color = "#56B4E9", fill = "white")+
+    xlab("Temperatura Média (ºC) em Campina Grande") + ylab("Frequência")
 
+jp = clima08_18 %>% 
+    filter(cidade == "João Pessoa")
 
-### Quais os meses mais quentes e mais frios? 
+hist_tempjp = jp %>% 
+    ggplot(aes(x = tmedia)) + 
+    scale_x_continuous(breaks = seq(15,35,1)) +
+    scale_y_continuous(breaks = seq(0,100,5)) +
+    geom_histogram(binwidth = .5, color = "#F6511D", fill = "white")+
+    xlab("Temperatura Média (ºC) em João Pessoa") + ylab("Frequência")
+    
+grid.arrange(hist_tempcg, hist_tempjp, ncol = 2)
+```
 
+### Análise
+
+Observando os gráficos acima, percebemos que a dispersão no gráfico da cidade de Campina Grande é um pouco maior do que da cidade de João Pessoa, com temperatura média variando entre 20ºC a 29ºC e João Pessoa entre 24ºC a 31ºC aproximadamente. Os picos também diferem, mostrando que a cidade de João Pessoa tem uma temperatura média maior que a cidade de Campina Grande.   
 
 ### Qual foi o São João  mais frio de CG que está nos nossos dados?
+Para está análise, consideramos o mês de junho (6) completo como o mês do São João de Campina Grande.
 
+```{r}
+cg %>%
+    filter(mes == 6) %>%
+    ggplot(aes(x=ano, y=tmin)) +
+    scale_x_continuous(breaks = seq(2009,2019,1)) +
+    geom_jitter(width = .5, alpha = .9, color = "salmon") + 
+    geom_text(aes(label=tmin),hjust=0, vjust=0, size=3) +
+    #coord_flip () + 
+    labs(x = "Ano", y = "Temperatura (ºC)")
+    
+```
 
+### Análise
+Analisando o gráfico acima, percebemos claramente que o ano no qual o São João foi mais frio foi o ano de 2018, onde a menor temperatura registrada foi de 16.6ºC. No gráfico tambem podemos perceber que há uma certa constante na temperatura para este mês nos últimos 10 anos, tendo uma variação aproximada de 1ºC a 2ºC. Ainda podemos concluir que nos últimos 10 anos a temperatura mínima sempre foi inferior a 20ºC. 
 
 ## Chuva
 
-### Quanto chove por semana em JP e CG?
-
-Como é a distribuição do volume de chuvas por semana em JP e CG? A chuva varia mais ou menos que a temperatura? O formato da distribuição é igual? 
-
 ### No geral, onde chove mais?
 
+
+```{r}
+# densidade
+
+chuvacg = cg %>% 
+    ggplot(aes(x = chuva)) +
+    scale_x_continuous(breaks = seq(0,300,30)) +
+    geom_density(fill = "#007FFF") +
+    xlab("Índice pluviométrico (mm) em Campina Grande") + ylab("Densidade")
+
+chuvajp = jp %>% 
+    ggplot(aes(x = chuva)) + 
+    scale_x_continuous(breaks = seq(0,300,30)) +
+    geom_density(fill = "#007FFF") +
+    xlab("Índice pluviométrico (mm) em João Pessoa") + ylab("Densidade")
+    
+grid.arrange(chuvacg, chuvajp, ncol = 2)
+
+```
+
+##Análise
+
+Podemos concluir observando os gráficos de densidade acima, que a cidade de João Pessoa possui maior índice pluviométrico, ou seja, chove mais que a cidade de Campina Grande. Vale destacar que ambos os gráficos apresentam uma calda a esquerda, demonstrando que a maior concentração de índices pluviométricos se encontra entre 0 e 60 (mm).
+
 ### A distribuição é diferente em meses específicos? 
+
+```{r}
+clima08_18 %>%
+  group_by(ano, mes, cidade) %>%
+  ggplot(aes(x= mes,y = chuva, color=cidade)) +
+  geom_jitter(alpha = 0.7)+
+  geom_smooth(method =lm)+
+  scale_x_continuous(breaks = seq(1,12)) +
+  scale_y_continuous(breaks = seq(0,300,10)) +
+  labs(x = "Mês", y = "Índice Pluviométrico (mm)",colour = "Cidade")
+```
+
+### Análise
+
+Observamos no gráfico acima, que o índice pluviométrico da cidade de João Pessoa e bem maior que na cidade de Campina Grande e que a distribuição pluviométrica no primeiro semestre do ano é bem diferente do segundo semestre do ano. Podemos observar ainda, vários pontos fora da curva (Outliers), principalmente no mês de junho, onde ocorre os maiores índices pluviométricos. Vale destacar as linhas de tendência dos índices, que além de mostra claramente que em João Pessoa chove mais, também demonstra que as chuvas ficam mais escarças no último trimestre do ano. 
 
